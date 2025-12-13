@@ -1,0 +1,7 @@
+name: "smallin/my-nvs"
+version: 1.0.1
+description: "NVS component（简化使用，扩展基本数据类型支持）"
+repository: "git@github.com:smalllin0/my-nvs.git"
+license: Apache 2.0
+dependencies:
+  idf: '>=5.4'

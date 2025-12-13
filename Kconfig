@@ -1,0 +1,17 @@
+menu "MyNVS 组件配置"
+    config MAX_NAMESPACE
+        int "操作名字空间数量"
+        default 4
+        help
+            "配置最多能够同时打开的名字空间数量"
+    config ERASE_ON_NO_FREE_PAGES
+        bool "初始化NVS时，遇到没有空闲页面自动进行擦除"
+        default n
+        help 
+            "当初始化NVS时，如果没有空闲页面时自动擦除。"
+    config ERASE_ON_NEW_VERSION_FOUND
+        bool "初始化NVS时，发现新版本格式自动进行擦除"
+        default y
+        help 
+            "当初始化NVS时，如果发现新NVS格式时自动擦除。"
+endmenu
