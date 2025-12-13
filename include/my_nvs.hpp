@@ -174,7 +174,7 @@ esp_err_t MyNVS::read(const char* key, T& value)
     }
     
     if constexpr(BoolType<T>) {
-        uint8_t tmp;
+        uint8_t tmp = 0;
         auto err = nvs_get_u8(m_nvs->handle, key, &tmp);
         if(ESP_OK == err) {
             value = (tmp != 0);
@@ -191,7 +191,7 @@ esp_err_t MyNVS::read(const char* key, T& value)
         }
         return ESP_OK;
     } else if constexpr(CharType<T>) {
-        uint8_t tmp;
+        uint8_t tmp = 0;
         auto err = nvs_get_u8(m_nvs->handle, key, &tmp);
         if(ESP_OK == err) {
             value = static_cast<char>(tmp);
@@ -204,13 +204,13 @@ esp_err_t MyNVS::read(const char* key, T& value)
         esp_err_t err = ESP_ERR_NOT_SUPPORTED;
         if constexpr(sizeof(T) == 1) {
             if constexpr(std::is_signed_v<T>) {
-                int8_t tmp;
+                int8_t tmp = 0;
                 err = nvs_get_i8(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
                 }
             } else {
-                uint8_t tmp;
+                uint8_t tmp = 0;
                 err = nvs_get_u8(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
@@ -218,7 +218,7 @@ esp_err_t MyNVS::read(const char* key, T& value)
             }
         } else if constexpr(sizeof(T) == 2) {
             if constexpr(std::is_signed_v<T>) {
-                int16_t tmp;
+                int16_t tmp = 0;
                 err = nvs_get_i16(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
@@ -232,13 +232,13 @@ esp_err_t MyNVS::read(const char* key, T& value)
             }
         } else if constexpr(sizeof(T) == 4) {
             if constexpr(std::is_signed_v<T>) {
-                int32_t tmp;
+                int32_t tmp = 0;
                 err = nvs_get_i32(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
                 }
             } else {
-                uint32_t tmp;
+                uint32_t tmp = 0;
                 err = nvs_get_u32(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
@@ -246,13 +246,13 @@ esp_err_t MyNVS::read(const char* key, T& value)
             }
         } else if constexpr(sizeof(T) == 8) {
             if constexpr(std::is_signed_v<T>) {
-                int64_t tmp;
+                int64_t tmp = 0;
                 err = nvs_get_i64(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
                 }
             } else {
-                uint64_t tmp;
+                uint64_t tmp = 0;
                 err = nvs_get_u64(m_nvs->handle, key, &tmp);
                 if(ESP_OK == err) {
                     value = tmp;
@@ -263,8 +263,8 @@ esp_err_t MyNVS::read(const char* key, T& value)
     } else if constexpr(FloatingType<T>) {
         using StorageType = std::conditional_t<sizeof(T) <= 4, uint32_t, uint64_t>;
         static_assert(sizeof(T) == sizeof(StorageType), "浮点类型大小不匹配");
-        StorageType tmp;
-        esp_err_t err;
+        StorageType tmp = 0;
+        esp_err_t err = ESP_OK;
         if constexpr(sizeof(T) <= 4) {
             err = nvs_get_u32(m_nvs->handle, key, &tmp);
         } else {
