@@ -116,18 +116,7 @@ esp_err_t MyNVS::read(const char* key, char* value)
     }
     size_t len = 0;
     auto err = nvs_get_str(m_nvs->handle, key, nullptr, &len);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "读取%s失败: %s", key, esp_err_to_name(err));
-        return err;
-    } else {
-        err = nvs_get_str(m_nvs->handle, key, value, &len);
-        if (err == ESP_OK) {
-            return ESP_OK;
-        }
-    }
-    
-    ESP_LOGE(TAG, "读取%s失败: %s", key, esp_err_to_name(err));
-    return err;
+    return err == ESP_OK ? nvs_get_str(m_nvs->handle, key, value, &len) : err; 
 }
 
 esp_err_t MyNVS::read(const char* key, std::string &value)
@@ -157,7 +146,6 @@ esp_err_t MyNVS::read(const char* key, std::string &value)
     size_t len = 0;
     auto err = nvs_get_str(m_nvs->handle, key, nullptr, &len);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "读取%s失败: %s", key, esp_err_to_name(err));
         return err;
     } else {
         if(len == 0) {
@@ -167,15 +155,7 @@ esp_err_t MyNVS::read(const char* key, std::string &value)
     }
 
     value.resize(len - 1);
-    err = nvs_get_str(m_nvs->handle, key, value.data(), &len);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "读取%s失败: %s", key, esp_err_to_name(err));
-        value.clear();
-    } else {
-        value.resize(len - 1);
-    }
-
-    return err;
+    return nvs_get_str(m_nvs->handle, key, value.data(), &len);
 }
 
 // --- Blob读取 ---
@@ -203,9 +183,6 @@ esp_err_t MyNVS::read(const char* key, void* value, size_t* length)
         return ESP_FAIL;
     }
     auto err = nvs_get_blob(m_nvs->handle, key, value, length);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "读取%s失败: %s", key, esp_err_to_name(err));
-    }
     return err;
 }
 
@@ -239,11 +216,7 @@ esp_err_t MyNVS::write(const char* key, const char* value)
         ESP_LOGE(TAG, "NVS未正确打开或实例已失效");
         return ESP_FAIL;
     }
-    auto err = nvs_set_str(m_nvs->handle, key, value);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "写入%s失败: %s", key, esp_err_to_name(err));
-    }
-    return err;
+    return nvs_set_str(m_nvs->handle, key, value);
 }
 
 // --- Blob写入 ---
@@ -275,11 +248,7 @@ esp_err_t MyNVS::write(const char* key, const void* value, size_t length)
         ESP_LOGE(TAG, "NVS未正确打开或实例已失效");
         return ESP_FAIL;
     }
-    auto err = nvs_set_blob(m_nvs->handle, key, value, length);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "写入%s失败: %s", key, esp_err_to_name(err));
-    }
-    return err;
+    return nvs_set_blob(m_nvs->handle, key, value, length);
 }
 
 
@@ -358,11 +327,7 @@ esp_err_t MyNVS::erase_key(const char* key)
         ESP_LOGE(TAG, "NVS未正确打开或实例已失效");
         return ESP_FAIL;
     }
-    auto err = nvs_erase_key(m_nvs->handle, key);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "擦除%s失败: %s", key, esp_err_to_name(err));
-    }
-    return err;
+    return nvs_erase_key(m_nvs->handle, key);
 }
 
 esp_err_t MyNVS::erase_key(const std::string& key)
@@ -381,11 +346,7 @@ esp_err_t MyNVS::erase_all()
         ESP_LOGE(TAG, "NVS未正确打开或实例已失效");
         return ESP_FAIL;
     }
-    auto err = nvs_erase_all(m_nvs->handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "擦除所有内容失败: %s", esp_err_to_name(err));
-    }
-    return err;
+    return nvs_erase_all(m_nvs->handle);
 }
 
 esp_err_t MyNVS::commit()
@@ -399,9 +360,5 @@ esp_err_t MyNVS::commit()
         ESP_LOGE(TAG, "尝试加锁失败或NVS已关闭");
         return ESP_FAIL;
     }
-    auto err = nvs_commit(m_nvs->handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "提交失败: %s", esp_err_to_name(err));
-    }
-    return err;
+    return nvs_commit(m_nvs->handle);
 }

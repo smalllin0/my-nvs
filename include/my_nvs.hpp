@@ -13,7 +13,8 @@
  * limitations under the License.
  *
 */
-#pragma once
+#ifndef MY_NVS_HPP_
+#define MY_NVS_HPP_
 
 #include <string>
 #include <cstring>
@@ -60,20 +61,40 @@ public:
 
     // 字符串数据读取
     esp_err_t read(const char* key, char* value);
-    esp_err_t read(const std::string& key, char* value);
+    esp_err_t read(const std::string& key, char* value) {
+        return read(key.c_str(), value);
+    }
     esp_err_t read(const char* key, std::string& value);
-    esp_err_t read(const std::string& key, std::string& value);
+    esp_err_t read(const std::string& key, std::string& value)
+    {
+        return read(key.c_str(), value.c_str());
+    }
     // 二进制数据读取
     esp_err_t read(const char* key, void* value, size_t* length);
-    esp_err_t read(const std::string& key, void* value, size_t* length);
+    esp_err_t read(const std::string& key, void* value, size_t* length)
+    {
+        return read(key.c_str(), value, length);
+    }
 
     // 字符串和二进制数据写入
     esp_err_t write(const char* key, const char* value);
-    esp_err_t write(const std::string& key, const char* value);
-    esp_err_t write(const char* key, const std::string& value);
-    esp_err_t write(const std::string& key, const std::string& value);
+    esp_err_t write(const std::string& key, const char* value)
+    {
+        return write(key.c_str(), value);
+    }
+    esp_err_t write(const char* key, const std::string& value)
+    {
+        return write(key, value.c_str());
+    }
+    esp_err_t write(const std::string& key, const std::string& value)
+    {
+        return write(key.c_str(), value.c_str());
+    }
     esp_err_t write(const char* key, const void* value, size_t length);
-    esp_err_t write(const std::string& key, const void* value, size_t length);
+    esp_err_t write(const std::string& key, const void* value, size_t length)
+    {
+        return write(key.c_str(), value, length);
+    }
 
     // 其他操作
     esp_err_t find(const char* key);
@@ -112,34 +133,6 @@ private:
     MyNVS_Manager*  m_manager;
 };
 
-inline esp_err_t MyNVS::read(const std::string& key, char* value)
-{
-    return read(key.c_str(), value);
-}
-inline esp_err_t MyNVS::read(const std::string& key, std::string& value)
-{
-    return read(key.c_str(), value);
-}
-inline esp_err_t MyNVS::read(const std::string& key, void* value, size_t* length)
-{
-    return read(key.c_str(), value, length);
-}
-inline esp_err_t MyNVS::write(const std::string& key, const char* value)
-{
-    return write(key.c_str(), value);
-}
-inline esp_err_t MyNVS::write(const char* key, const std::string& value)
-{
-    return write(key, value.c_str());
-}
-inline esp_err_t MyNVS::write(const std::string& key, const std::string& value)
-{
-    return write(key.c_str(), value.c_str());
-}
-inline esp_err_t MyNVS::write(const std::string& key, const void* value, size_t length)
-{
-    return write(key.c_str(), value, length);
-}
 
 
 // ======================================================
@@ -180,16 +173,11 @@ esp_err_t MyNVS::read(const char* key, T& value)
             value = (tmp != 0);
             return ESP_OK;
         }
-        ESP_LOGE("MyNVS-HPP", "读取%s失败: %s", key, esp_err_to_name(err));
         return err;
     } else if constexpr(EnumType<T>) {
         uint8_t tmp = static_cast<uint8_t>(value);
         auto err = nvs_get_u8(m_nvs->handle, key, (uint8_t*)(&value));
-        if(ESP_OK != err) {
-            ESP_LOGE("MyNVS-HPP", "读取%s失败: %s", key, esp_err_to_name(err));
-            return err;
-        }
-        return ESP_OK;
+        return err;
     } else if constexpr(CharType<T>) {
         uint8_t tmp = 0;
         auto err = nvs_get_u8(m_nvs->handle, key, &tmp);
@@ -197,7 +185,6 @@ esp_err_t MyNVS::read(const char* key, T& value)
             value = static_cast<char>(tmp);
             return ESP_OK;
         }
-        ESP_LOGE("MyNVS-HPP", "读取%s失败: %s", key, esp_err_to_name(err));
         return err;
     } else if constexpr(IntegerType<T>) {
         static_assert(sizeof(T) == 1 || sizeof(T) == 2 ||sizeof(T) == 4 ||sizeof(T) == 8, "不支持的整数大小，当前仅支持1/2/4/8字节整数");
@@ -274,7 +261,6 @@ esp_err_t MyNVS::read(const char* key, T& value)
             std::memcpy(&value, &tmp, sizeof(T));
             return ESP_OK;
         }
-        ESP_LOGE("MyNVS-HPP", "读取%s失败: %s", key, esp_err_to_name(err));
         return err;
     } else {
         static_assert(always_false<T>, "暂不支持该类型");
@@ -381,3 +367,5 @@ esp_err_t MyNVS::write(const std::string& key, const T& value)
 {
     return write(key.c_str(), value);
 }
+
+#endif
