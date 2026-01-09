@@ -55,7 +55,13 @@ class MyNVS_Manager;
 class MyNVS {
 public:
     explicit MyNVS(const char* name_space, nvs_open_mode_t mode = NVS_READONLY);
+    explicit MyNVS(const char* name_space, bool rw) 
+        : MyNVS(name_space, rw ? NVS_READWRITE : NVS_READONLY)
+    {}
     MyNVS(const char* partition, const char* name_space, nvs_open_mode_t mode = NVS_READONLY);
+    MyNVS(const char* partition, const char* name_space, bool rw)
+        : MyNVS(partition, name_space, rw ? NVS_READWRITE : NVS_READONLY)
+    {}
     ~MyNVS();
     
 
