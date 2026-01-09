@@ -40,7 +40,13 @@ public:
     static void release_instance();
     my_nvs_t* get_nvs(int8_t index);
     int8_t open(const char* name_space, nvs_open_mode_t mode = NVS_READONLY);
+    int8_t open(const char* name_space, bool rw) {
+        return open(name_sapce, rw ? NVS_READWRITE : NVS_READONLY);
+    }
     int8_t open(const char* partition, const char* name_space, nvs_open_mode_t mode = NVS_READONLY);
+    int8_t open(const char* partition, const char* name_space, nvs_open_mode_t mode = NVS_READONLY) {
+        return open(partiion, name_sapce, rw ? NVS_READWRITE : NVS_READONLY);
+    }
     void close(my_nvs_t* my_nvs);
 private:
     MyNVS_Manager();
