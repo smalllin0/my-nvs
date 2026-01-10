@@ -73,7 +73,7 @@ public:
     esp_err_t read(const char* key, std::string& value);
     esp_err_t read(const std::string& key, std::string& value)
     {
-        return read(key.c_str(), value.c_str());
+        return read(key.c_str(), value);
     }
     // 二进制数据读取
     esp_err_t read(const char* key, void* value, size_t* length);
