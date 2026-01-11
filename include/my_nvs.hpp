@@ -181,15 +181,17 @@ esp_err_t MyNVS::read(const char* key, T& value)
         }
         return err;
     } else if constexpr(EnumType<T>) {
-        uint8_t tmp = static_cast<uint8_t>(value);
-        auto err = nvs_get_u8(m_nvs->handle, key, (uint8_t*)(&value));
+        uint8_t tmp = value ? (uint8_t)1 : 0;
+        auto err = nvs_get_u8(m_nvs->handle, key, &tmp);
+        if (err == ESP_OK) {
+            value = static_cast<T>(tmp);
+        }
         return err;
     } else if constexpr(CharType<T>) {
         uint8_t tmp = 0;
         auto err = nvs_get_u8(m_nvs->handle, key, &tmp);
         if(ESP_OK == err) {
             value = static_cast<char>(tmp);
-            return ESP_OK;
         }
         return err;
     } else if constexpr(IntegerType<T>) {
