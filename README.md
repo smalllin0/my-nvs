@@ -25,7 +25,7 @@ my_nvs/
 ├── src/my_nvs_manager.h    // 槽位管理器 & my_nvs_t 定义
 ├── src/nvs_manager.cc      // 管理器实现：init / open / close
 ├── src/my_nvs.cc           // 非模板成员实现（字符串 / blob / find / erase / commit）
-└── test/				  // 测试用例
+└── test/                   // 测试用例
 ```
 
 ---
@@ -169,6 +169,8 @@ if (!g.ok) return ESP_ERR_INVALID_STATE;   // 未打开 / 只读 / 已失效
 
 ```
 idf.py build flash monitor
+
+# pytest --target esp32c3 --embedded-services esp,idf -v
 ```
 
-或进入组件 `test/` 目录按 ESP-IDF 单元测试流程运行。
+需进入组件 `test/` 目录按 ESP-IDF 单元测试流程运行。
