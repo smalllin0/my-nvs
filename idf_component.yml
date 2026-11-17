@@ -1,0 +1,6 @@
+dependencies:
+  idf: '>=5.4'
+description: NVS component（简化使用，扩展基本数据类型支持）
+license: Apache 2.0
+repository: git@github.com:smalllin0/my-nvs.git
+version: 1.2.0
