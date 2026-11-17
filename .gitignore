@@ -1,2 +1,5 @@
 dist/
-idf_component.yml
+test_apps/build
+test_apps/dependencies.lock
+test_apps/__pycache__/
+test_apps/sdkconfig.old
