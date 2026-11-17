@@ -1,159 +1,174 @@
-# MyNVS 组件
+# MyNVS
 
-- MyNVS组件是对ESP-IDF 的 NVS API的封装，提供更易用接口来操作NVS。
+ESP-IDF NVS 的现代 C++ 便捷封装。在原生 `nvs_get_*` / `nvs_set_*` 之上提供统一类型的
+`read` / `write` 接口，并用引用计数的命名空间槽位管理器复用 `nvs_handle_t`。
 
-## To do
+---
 
+## 特性
 
-## 目录
+- **统一接口**：一份 `read` / `write` 覆盖标量、`std::string`、`std::vector`、`std::array`、原始 blob。
+- **类型安全**：基于 C++20 concept 约束，编译期拒绝不支持的类型；`bool` / 枚举 / 整数 / 浮点分别走正确分支。
+- **零字符串拷贝**：`key` 用 `std::string_view` 接收，内部 `SafeKey` 一次性规范化为带 `'\0'` 的 C 串。
+- **命名空间复用**：相同 `(partition, namespace)` 多次打开共享同一 `nvs_handle_t`，引用计数归零才 `commit + close`。
+- **线程安全**：全局互斥保护槽位池；每个槽位独立互斥保护 `handle` 上的读写。
+- **RAII**：`Guard` 对象在构造时一次性完成"加锁 + 句柄有效性检查 + 读写模式检查"。
+- **返回值透明**：所有 API 返回 `esp_err_t`，不做二次封装。
 
-- [主要特性](#主要特性)
-- [API参考](#API参考)
-- [使用例程](#使用例程)
-- [注意事件](#注意事项)
-- [配置选项](#配置选项)
-- [依赖](#依赖)
-- [许可](#许可)
+---
 
-## 主要特性
-
-- **支持更多数据类型**
-    1. 原生数据：```int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t uint64_t、字符串、blob```
-    2. 扩展支持：```bool int enum(8bits has been tested) long float double std::string ```
-- **统一的操作API**
-    1. 读写操作统一使用read/write方法完成
-- **线程操作安全**
-    1. 通过线程锁std::lock保证单线程安全
-- **自动提交**
-    1. 在关闭命名空间时，自动提交更改
-    2. 提供手动提交方法
-- **错误处理**
-    1. 所有方法返回原生API相同的错误代码，方便处理故障
-
-## API参考
-- 读写类
-```
-esp_err_t read(TYPE1 key, TYPE2 value);
-esp_err_t read(TYPE2 key, void* value, size_t* length);
-esp_err_t write(TYPE1 key, TYPE3 value);
-esp_err_t write(TYPE2 key, const void* value, size_t* length);
-
-
-/*
- * TYPE1：const char*、const std::string&
- * TYPE2：支持更多数据类型中数据类型的引用、指针版本
- * TYPE3：支持更多数据类型中数据类型的引用
- */
+## 文件结构
 
 ```
-- 查找
-```
-esp_err_t find(const char* key);
-esp_err_t find(const std::string& key);
-esp_err_t find(const char* key, nvs_type_t* out_type);
-esp_err_t find(const std::string& key, nvs_type_t* out_type);
-```
-- 删除提交
-```
-esp_err_t erase_key(const char* key);
-esp_err_t erase_key(const std::string& key);
-esp_err_t erase_all();
-esp_err_t commit();
+my_nvs/
+├── include/my_nvs.h        // MyNVS 类 + 模板实现
+├── src/my_nvs_manager.h    // 槽位管理器 & my_nvs_t 定义
+├── src/nvs_manager.cc      // 管理器实现：init / open / close
+├── src/my_nvs.cc           // 非模板成员实现（字符串 / blob / find / erase / commit）
+└── test/				  // 测试用例
 ```
 
-## 使用例程
+---
+
+## 快速开始
 
 ```cpp
-#include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "my_nvs.h"
 
-#include "esp_log.h"
-#include "my_nvs.hpp"
-#include "my_storage.h"
-#include "cstddef"
+MyNVS nvs("my_ns", NVS_READWRITE);   // 使用默认 "nvs" 分区
+// 或 MyNVS nvs("custom_part", "my_ns", NVS_READWRITE);
 
-#define TAG "main"
+// 字符串
+esp_err_t err = nvs.write("name", std::string("ESP32"));
+std::string name;
+err = nvs.read("name", name);        // 读到 name 里，不含 '\0'
 
+// 整数 / 浮点
+nvs.write("count",  int32_t{42});
+nvs.write("scale",  1.5f);
 
-extern "C" void app_main(void)
-{
-    // data to store
-    bool flag = true;
-    char ch = 'a';
-    int a = 32;
-    long b = 43L;
-    float c = 32.1;
-    double d = 22.001;
-    // 注意，浮点数本身是存在精度问题的
-    ESP_LOGW(TAG, "float c=%f, double d=%lf", c, d);
+int32_t c = 0;
+nvs.read("count", c);
 
-    // open a default partition NVS: "nvs"，namespace too long will use substr: test12345678901, when namespace  is 
-    // 打开一个默认分区（nvs），名字空间为test12345678901（长度超长），模式为读写模式
-    // 1. 将使用截断的名字空间：test12345678901
-    // 2. 注意有这可能造成写入错误的名字空间中
-    MyNVS nvs("test1234567890123", NVS_READWRITE);
-    nvs.write("flag", flag);
-    nvs.write("ch", ch);
-    nvs.write("a", a);
-    nvs.write("b", b);
-    nvs.write("c", c);
-    nvs.write("d", d);
+// 字节容器
+std::vector<uint8_t> v = {1, 2, 3};
+nvs.write("v", v);
 
-    bool f = false;
-    char ch1 = 'z';
-    int a1 = 10;
-    long b1 = 7;
-    float c1 = 0.0;
-    double d1 = 0.0;
-    nvs.read("flag", f);
-    nvs.read("ch", ch1);
-    nvs.read("a", a1);
-    nvs.read("b", b1);
-    nvs.read("c", c1);
-    nvs.read("d", d1);
+std::vector<uint8_t> v2;
+nvs.read("v", v2);                   // 自动 resize 到实际长度
 
-    ESP_LOGE(TAG, "flag=%d,ch=%c,a=%d,b=%ld,c1=%f,d1=%lf,c=%f,d=%lf",f,ch1,a1,b1,c1,d1,c,d);
+std::array<uint8_t, 3> a = {1, 2, 3};
+nvs.write("a", a);                   // 固定容器，长度必须一致
 
-    // 写入一个键超长的键值对时同理（会自动截断，可能导致键名重复）
-    nvs.write("h1234567890123456", 12);
+// 原始 blob（nullptr 只查长度）
+size_t len = 0;
+nvs.read("v", (void*)nullptr, &len);
 
-    // 操作不存在的键时，
-    // 1. 将提示出错```E (284) MyNVS: 读取nihao失败: ESP_ERR_NVS_NOT_FOUND```
-    // 2. 不修改其原来值
-    // 3. 返回原api的错误码
-    std::string str = "hello";
-    auto err = nvs.read("nihao", str);
-    ESP_LOGI(TAG, "str = %s, err=%s", str.c_str(), esp_err_to_name(err));
-
-    // 支持引用、指针的第二参数（为防止代码膨胀，请使用一种风格）
-    int style1 = 0;
-    int style2 = 0;
-    nvs.read("a", style1);
-    nvs.read("a", &style2);
-    ESP_LOGI(TAG, "style1=%d, style2=%d", style1, style2);
+// 查询 / 删除 / 提交
+nvs_type_t type;
+if (nvs.find("name", type) == ESP_OK) {
+    // type == NVS_TYPE_STR
 }
-
+nvs.erase_key("name");
+nvs.erase_all();
+nvs.commit();
 ```
 
+---
+
+## API 参考
+
+### 构造 / 析构
+
+| 接口 | 说明 |
+| --- | --- |
+| `MyNVS(name_space, mode = NVS_READONLY)` | 使用 `"nvs"` 分区 |
+| `MyNVS(partition, name_space, mode = NVS_READONLY)` | 指定分区 |
+| `~MyNVS()` | 引用计数减一；归零时 `commit + close` |
+
+> 构造失败时 `nvs_ == nullptr`，后续操作统一返回 `ESP_ERR_INVALID_STATE`。
+
+### 通用操作
+
+| 接口 | 说明 |
+| --- | --- |
+| `find(key, nvs_type_t&)` | 查询 key 是否存在及其类型 |
+| `erase_key(key)` | 删除单个 key |
+| `erase_all()` | 清空当前命名空间 |
+| `commit()` | 提交挂起的写入 |
+
+### 读 / 写
+
+| 重载 | 底层 | 说明 |
+| --- | --- | --- |
+| `read(key, std::string&)` | `nvs_get_str` | 两遍读取：先取长度再分配，读后去掉 `'\0'` |
+| `write(key, const std::string&)` | `nvs_set_str` | |
+| `read(key, void*, size_t*)` | `nvs_get_blob` | `value == nullptr` 时仅返回所需长度（WinAPI 风格） |
+| `write(key, const void*, size_t)` | `nvs_set_blob` | |
+| `read(key, ResizableByteBuffer&)` | `nvs_get_blob` | 自动 `resize` 到实际长度 |
+| `read(key, FixedByteBuffer&)` | `nvs_get_blob` | 长度不匹配返回 `ESP_ERR_NVS_INVALID_LENGTH` |
+| `write(key, ByteBuffer&)` | `nvs_set_blob` | 两种容器共用实现 |
+| `read(key, T&)` / `write(key, T)` | 按宽度/符号分派 | 标量：`bool` / `char` / `enum(1B)` / 整数 / `float` / `double` |
+
+**标量映射表：**
+
+| C++ 类型 | NVS 底层 |
+| --- | --- |
+| `bool` | `nvs_get/set_u8`（0/1） |
+| `char` / `enum : uint8_t` | `nvs_get/set_u8`（位模式） |
+| `int8_t / int16_t / int32_t / int64_t` | `nvs_get/set_i8/i16/i32/i64` |
+| `uint8_t / uint16_t / uint32_t / uint64_t` | `nvs_get/set_u8/u16/u32/u64` |
+| `float` / `double` | `nvs_get/set_u32/u64`（**位模式**，非数值转换） |
+
+---
+
+## 设计说明
+
+### 槽位池 & 引用计数
+
+`MyNVS_Manager` 是进程内单例，持有固定容量的槽位数组（大小由 `CONFIG_MAX_NAMESPACE` 决定）。
+每次打开 `(partition, namespace)` 时：
+
+1. 在槽位中查找 `(partition, namespace)` 完全一致的项 → **复用并 `ref++`**；
+2. 否则找空闲槽位 → `nvs_open_from_partition` 真正打开，`ref = 1`；
+3. 只读槽位**不允许**升级为读写（避免并发下模式切换）；
+4. 最后一个引用析构时才 `nvs_commit + nvs_close`。
+
+### SafeKey
+
+NVS 要求 key 以 `'\0'` 结尾且不超过 15 字节；`std::string_view` 不保证这两点。
+`SafeKey` 在构造时拷贝到本地定长缓冲区、补齐 `'\0'`、超长则截断并告警，保证传给
+底层 C API 的指针总是合法的。
+
+### Guard
+
+`Guard` 是一个轻量 RAII：
+
+```cpp
+Guard g(nvs_, /*need_write=*/true);
+if (!g.ok) return ESP_ERR_INVALID_STATE;   // 未打开 / 只读 / 已失效
+// ... 使用 g.nvs->handle ...
+```
+
+构造时一次性完成 **加锁 + 句柄检查 + 模式检查**，作用域结束时自动解锁。
+
+---
 
 ## 注意事项
-1. 默认启动自动初始化，不应当再进行```nvs_flash_init()```初始化操作；
-2. 浮点类型本身存在精度问题，使用时请小心；
 
-## 配置选项
-- 在menuconfig中配置最大命名空间数量及特性
+- **枚举必须显式指定为 1 字节的uint8_t**（如 `enum class E : uint8_t { ... };`），否则 `static_assert` 报错。
+- `float` / `double` 以**位模式**存储（`uint32_t` / `uint64_t`），不做数值转换；请勿与整数 key 混用同一 key 名。
+- **key 名超长会被截断并告警**，但不会报错（与 ESP-IDF 原生 `nvs_*` 行为一致）。
+- **只读命名空间无法升级为读写**：如果先以 `NVS_READONLY` 打开，之后同一 `(partition, namespace)` 请求 `NVS_READWRITE` 会失败，需先关闭所有引用。
+- **并发打开多个不同命名空间**的总数受 `CONFIG_MAX_NAMESPACE` 限制；测试中应尽量使用独立命名空间并及时让 `MyNVS` 析构。
+- 构造失败**不会抛异常**，需要通过后续 `read` / `write` 返回的 `ESP_ERR_INVALID_STATE` 感知。
+
+---
+
+## 测试
+
 ```
-Component config -> MyNVS 组件配置 -> 
-    (4) 操作名字空间数量
-    [ ] 初始化NVS时，遇到没有空闲页面自动进行擦除
-    [*] 初始化NVS时，发现新版本格式自动进行擦除
+idf.py build flash monitor
 ```
-## 依赖
-- ESP-IDF 5.4+（其他版本未测试）
-- C++ 20标准
 
-## 许可
-- Licenses: Aapche 2.0 
-- Copyright: samllin
-
+或进入组件 `test/` 目录按 ESP-IDF 单元测试流程运行。
