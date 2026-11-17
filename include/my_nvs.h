@@ -28,7 +28,7 @@
 #include <type_traits>
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "my_nvs_manager.h"
+#include "../src/my_nvs_manager.h"
 
 #define PARTITION_LENGTH    15   ///< 分区名最大长度（NVS 限制）
 #define NAMESPACE_LENGTH    15   ///< 命名空间最大长度（NVS 限制）
